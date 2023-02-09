@@ -1,0 +1,135 @@
+    /**
+     * Download a returns pdf.
+     */
+    public Resource downloadReturnPdf(String customerId, String orderId) {
+
+        final String uri = UriComponentsBuilder
+                .fromUriString(hostname)
+                .path(RETURN_SERVICE)
+                .path(RETURN_PDF)
+                .buildAndExpand(customerId, orderId)
+                .toUriString();
+
+        ResponseEntity<Resource> responseEntity = rest.exchange(uri, HttpMethod.GET, null, Resource.class);
+        return responseEntity.getBody();
+    }
+	
+    <!--Windeln libs-->
+    <dependency>
+        <groupId>de.windeln.common</groupId>
+        <artifactId>common-components</artifactId>
+        <version>${windeln.common-components.version}</version>
+    </dependency>
+
+    <!-- Thymeleaf -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-thymeleaf</artifactId>
+    </dependency>
+
+    <!-- flying saucer pdf -->
+    <dependency>
+        <groupId>org.xhtmlrenderer</groupId>
+        <artifactId>flying-saucer-pdf</artifactId>
+        <version>9.1.6</version>
+    </dependency>
+	
+	
+	
+    <!--Windeln libs-->
+    <windeln.common-components.version>1.5.2</windeln.common-components.version>
+	
+	package de.windeln.microservices.returns.port.adapter.pdfe;
+
+
+	import java.io.OutputStream;
+	import java.util.HashMap;
+	import java.util.Map;
+
+	import de.windeln.microservices.returns.port.adapter.pdf.model.ReturnPdfData;
+	import lombok.extern.slf4j.Slf4j;
+	import org.springframework.beans.factory.annotation.Autowired;
+	import org.springframework.stereotype.Component;
+	import org.springframework.util.Assert;
+	import org.thymeleaf.TemplateEngine;
+	import org.thymeleaf.context.Context;
+	import org.xhtmlrenderer.pdf.ITextRenderer;
+
+
+
+	@Component
+	@Slf4j
+	public class PdfGeneratorServiceTeste {
+
+	    private static final String UTF_8 = "UTF-8";
+
+	    @Autowired
+	    private TemplateEngine templateEngine;
+
+	    @Autowired
+	    private StaticDataMapper staticDataMapper;
+
+	    private ReturnPdfData getReturnData(String returnsId) {
+
+	        String shopId = "WINDELN_DE";
+
+	//        ShopDetails shopDetails = ShopDetailsConfig.getShopDetailsByShopCode(ShopCode.valueOf(shopId));
+	//        Locale locale = shopDetails.getLocale();
+
+	        return staticDataMapper.getReturnData(shopId);
+
+	//        Map<String,String> pdfData = new HashMap<>();
+	//        pdfData.put("name","James");
+
+
+
+	//        pdfData.put("title", messageSource.getMessage("pdf.title", null, locale));
+	//        pdfData.put("logoUrl", shopDetails.getLogoUrl());
+
+	    }
+
+	    public void getPdf(OutputStream outputStream, String returnsId) {
+
+	        ReturnPdfData returnPdfData = getReturnData(returnsId);
+
+
+	        try {
+	            createPdf("template", returnPdfData, outputStream);
+	        } catch (Exception e) {
+	            log.warn("Couldn't create pdf for returnsId: {}", returnsId);
+	        }
+	    }
+
+	    private void createPdf(String templateName, ReturnPdfData returnPdfData, OutputStream outputStream) throws Exception {
+
+	//        templateName = "test1";
+	        Map<String,String> pdfData = new HashMap<>();
+	        pdfData.put("name", "James");
+	        pdfData.put("logo", "https://windeln-assets.s3.amazonaws.com/content/1500.Whv2GzauMQ3190O9/0-2015-neu-windeln-logo-quer.png");
+	        Assert.notNull(templateName, "The templateName can not be null");
+	        Context ctx = new Context();
+	        if (returnPdfData != null) {
+	//            ctx.setVariable("data", returnPdfData);
+
+	//            for (Object o : pdfData.entrySet()) {
+	//                Map.Entry pair = (Map.Entry) o;
+	//                ctx.setVariable(pair.getKey().toString(), pair.getValue());
+	//            }
+	        }
+
+	        String processedHtml = templateEngine.process(templateName, ctx);
+	        //        String fileName = UUID.randomUUID().toString();
+	//        final File outputFile = File.createTempFile("test-pdf-thymleae", ".pdf");
+	//        try (FileOutputStream os = new FileOutputStream(outputFile)) {
+
+	            ITextRenderer renderer = new ITextRenderer();
+
+	            renderer.setDocumentFromString(processedHtml);
+	            renderer.layout();
+	            renderer.createPDF(outputStream, false);
+	            renderer.finishPDF();
+	//            System.out.println("PDF created successfully");
+	        }
+	}
+	//}
+	
